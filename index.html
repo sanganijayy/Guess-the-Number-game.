@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guess the Number Game</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background: url("https://source.unsplash.com/random/1600x900") no-repeat
+          center center fixed;
+        background-size: cover;
+        margin: 0;
+        color: #333;
+        overflow: hidden; /* To ensure effects don't overflow */
+      }
+
+      .game-container {
+        background: rgba(255, 255, 255, 0.9);
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        text-align: center;
+        max-width: 400px;
+        width: 100%;
+        backdrop-filter: blur(10px);
+      }
+
+      h1 {
+        font-size: 2.5em;
+        color: #222;
+        margin-bottom: 20px;
+      }
+
+      input {
+        padding: 12px;
+        font-size: 18px;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        width: 80%;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      input:focus {
+        border-color: #57a957;
+        outline: none;
+        box-shadow: 0 0 8px rgba(87, 169, 87, 0.5);
+      }
+
+      button {
+        padding: 12px 20px;
+        font-size: 18px;
+        border: none;
+        border-radius: 8px;
+        background-color: #57a957;
+        color: #fff;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+        margin-top: 10px;
+      }
+
+      button:hover {
+        background-color: #4a8a4a;
+        transform: translateY(-2px);
+      }
+
+      button:disabled {
+        background-color: #d0d0d0;
+        cursor: not-allowed;
+      }
+
+      #result {
+        margin-top: 20px;
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      #result.red {
+        color: #e74c3c;
+      }
+
+      #result.green {
+        color: #2ecc71;
+      }
+
+      #timer,
+      #high-score {
+        margin-top: 20px;
+        font-size: 18px;
+        color: #555;
+      }
+
+      #play-again {
+        margin-top: 20px;
+        background-color: #ff5733;
+      }
+
+      #play-again:hover {
+        background-color: #cc462f;
+        transform: translateY(-2px);
+      }
+
+      /* Confetti effect */
+      @keyframes confetti {
+        0% {
+          transform: translateY(-100vh);
+        }
+        100% {
+          transform: translateY(100vh);
+        }
+      }
+
+      .confetti {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        overflow: hidden;
+      }
+
+      .confetti div {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background-color: #ff0;
+        opacity: 0.9;
+        border-radius: 50%;
+        animation: confetti 2s ease-in-out forwards;
+      }
+
+      /* Loss effect */
+      @keyframes lossEffect {
+        0% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+        100% {
+          opacity: 1;
+        }
+      }
+
+      .loss-effect {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.5);
+        animation: lossEffect 1s infinite;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <h1>Guess the Number</h1>
+      <p>Guess a number between 1 and 100:</p>
+      <input type="number" id="guess" min="1" max="100" />
+      <button id="submit">Submit Guess</button>
+      <p id="result"></p>
+      <p id="timer">Time Left: <span id="time">30</span> seconds</p>
+      <p id="high-score">High Score: <span id="high-score-value">0</span></p>
+      <button id="play-again" style="display: none">Play Again</button>
+    </div>
+  </body>
+</html>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const guessInput = document.getElementById("guess");
+    const submitButton = document.getElementById("submit");
+    const resultText = document.getElementById("result");
+    const playAgainButton = document.getElementById("play-again");
+    const timerDisplay = document.getElementById("time");
+    const highScoreDisplay = document.getElementById("high-score-value");
+
+    let targetNumber;
+    let attempts = 0;
+    let timer;
+    let timeLeft = 30;
+    let highScore = localStorage.getItem("highScore") || Infinity;
+
+    function startGame() {
+      targetNumber = Math.floor(Math.random() * 100) + 1;
+      attempts = 0;
+      timeLeft = 30;
+      resultText.textContent = "";
+      resultText.className = "";
+      playAgainButton.style.display = "none";
+      guessInput.disabled = false;
+      submitButton.disabled = false;
+
+      // Reset timer
+      clearInterval(timer);
+      timerDisplay.textContent = timeLeft;
+      timer = setInterval(() => {
+        timeLeft--;
+        timerDisplay.textContent = timeLeft;
+        if (timeLeft <= 0) {
+          endGame(false);
+        }
+      }, 1000);
+
+      // Remove any existing effects
+      const existingConfetti = document.querySelector(".confetti");
+      if (existingConfetti) {
+        existingConfetti.remove();
+      }
+      const existingLossEffect = document.querySelector(".loss-effect");
+      if (existingLossEffect) {
+        existingLossEffect.remove();
+      }
+    }
+
+    function checkGuess() {
+      const userGuess = parseInt(guessInput.value, 10);
+      attempts++;
+
+      if (userGuess === targetNumber) {
+        endGame(true);
+      } else if (userGuess < targetNumber) {
+        resultText.textContent = "Too low! Try again.";
+        resultText.className = "red";
+      } else if (userGuess > targetNumber) {
+        resultText.textContent = "Too high! Try again.";
+        resultText.className = "red";
+      }
+    }
+
+    function endGame(won) {
+      clearInterval(timer);
+      guessInput.disabled = true;
+      submitButton.disabled = true;
+      if (won) {
+        resultText.textContent = `Congratulations! You guessed the number ${targetNumber} in ${attempts} attempts.`;
+        resultText.className = "green";
+        if (attempts < highScore) {
+          highScore = attempts;
+          localStorage.setItem("highScore", highScore);
+          highScoreDisplay.textContent = highScore;
+        }
+        showConfetti();
+      } else {
+        resultText.textContent = `Time's up! The number was ${targetNumber}.`;
+        resultText.className = "red";
+        showLossEffect();
+      }
+      playAgainButton.style.display = "block";
+    }
+
+    function showConfetti() {
+      const confettiContainer = document.createElement("div");
+      confettiContainer.className = "confetti";
+      document.body.appendChild(confettiContainer);
+
+      for (let i = 0; i < 100; i++) {
+        const confettiPiece = document.createElement("div");
+        confettiPiece.style.left = `${Math.random() * 100}vw`;
+        confettiPiece.style.top = `${Math.random() * 100}vh`;
+        confettiPiece.style.backgroundColor = `hsl(${
+          Math.random() * 360
+        }, 70%, 60%)`;
+        confettiPiece.style.animationDuration = `${Math.random() * 3 + 2}s`;
+        confettiContainer.appendChild(confettiPiece);
+      }
+    }
+
+    function showLossEffect() {
+      const lossEffect = document.createElement("div");
+      lossEffect.className = "loss-effect";
+      document.body.appendChild(lossEffect);
+    }
+
+    submitButton.addEventListener("click", checkGuess);
+    playAgainButton.addEventListener("click", startGame);
+
+    // Initialize high score display
+    highScoreDisplay.textContent = highScore;
+
+    // Start a new game when the page loads
+    startGame();
+  });
+</script>
